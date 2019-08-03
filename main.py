@@ -16,35 +16,36 @@ def connectionListener(connected, info):
         notified[0] = True
         cond.notify()
 
-def connect_to_nt_table():
-
-    NetworkTables.initialize(server=server_ip)
-    NetworkTables.addConnectionListener(connectionListener, immediateNotify=True)
-
-    with cond:
-        print("Waiting")
-        if not notified[0]:
-            cond.wait()
-
-    # Insert your processing code here
-    ros_nt = NetworkTables.getTable('ROS')
-    print("Connected!")
-
 def publish_to_nt_table(message):
+    print(message)
     for key, value in message.items():
-        ros_nt.putString(key, value)
+        table.putString(key, value)
 
-if __name__ == "__main__":
-    connect_to_nt_table()
-    client = roslibpy.Ros(host='localhost', port=9090)
-    client.run()
-    print('Is ROS connected?', client.is_connected)
+def publish_nodes(message):
+    print(message)
+    for node in message['nodes']:
+        global ros_nt
+        ros_nt.putString(node, "")
 
-    listener = roslibpy.Topic(client, '/turtle_sim/', 'std_msgs/String')
-    listener.subscribe(publish_to_nt_table)
+NetworkTables.initialize(server=server_ip)
+NetworkTables.addConnectionListener(connectionListener, immediateNotify=True)
 
-    try:    
-        while(client.is_connected):
-            pass
-    except KeyboardInterrupt:
-        client.terminate()
+with cond:
+    print("Waiting")
+    if not notified[0]:
+        cond.wait()
+        
+ros_nt = NetworkTables.getTable('ROS')
+print("Connected!")
+client = roslibpy.Ros(host='localhost', port=9090)
+client.run()
+print('Is ROS connected?', client.is_connected)
+client.get_nodes(publish_nodes)
+try:
+    while(client.is_connected):
+        pass
+except KeyboardInterrupt:
+    client.terminate()
+
+#listener = roslibpy.Topic(client, 'rtabmap_ros/MapGraph', 'std_msgs/String')
+#listener.subscribe(publish_to_nt_table)
